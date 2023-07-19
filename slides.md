@@ -9,6 +9,7 @@ fonts:
   mono: 'IntelOne Mono'
 transition: fade
 title: Let's Make an Inference Algorithm
+theme: dracula
 ---
 
 # Let's Make an Inference Algorithm
@@ -25,9 +26,9 @@ TypeScript compiler team at Microsoft
 
 <v-clicks>
 
+ * Demystify TypeScript's inference process
  * Demonstrate how use cases drive language development
- * Follow a simple model of TypeScript's inference process
- * Understand trade-offs
+ * Discuss trade-offs
 
 </v-clicks>
 
@@ -45,7 +46,7 @@ TypeScript compiler team at Microsoft
 
 -----------
 
-# The Problem
+# Terminology
 
 ```ts{1|3|3-6}
 function f<T>(arg1: T, arg2: T): T;
@@ -60,38 +61,32 @@ const result = f("hello", "world");
 # Getting Started
 
 ```ts {1|3|5}
-function id<T>(x: T): T;
+function f<T>(x: T): T;
 
 let n: number = 1;
 
-let x = id<__?__>(n);
+let x = f<__?__>(n);
 ```
 
-<v-clicks>
+<v-clicks depth="2">
 
 * `any`
 * `unknown`
 * `number | string | boolean`
 * `number`
-
+   * ⭐
 </v-clicks>
 
 ------------
 
-# Algorithm 1
-
- 1. Look at the argument type corresponding to the generic parameter
-
-------------
-
-# Algorithm 1
+# Algorithm
 
 ```ts
-function id<T>(x: T): T;
+function f<T>(x: T): T;
 
 let n: number = 1;
 
-let x = id<number>(n);
+let x = f(n);
 ```
 
 <v-clicks>
@@ -105,38 +100,28 @@ let x = id<number>(n);
 
 ------------
 
+# Algorithm
+
+<v-clicks depth="2">
+
+ 1. Look at the argument type corresponding to the parameter that uses the type parameter
+    * 🤔 what if there isn't one?
+
+</v-clicks>
+
+
+------------
+
 # Wrapped Type Parameters
 
-```ts
-type Box<T> = { value: T };
+```ts{1|3-5|7|all}
+type Box<T> = { readonly value: T };
 
 function unbox<T>(b: Box<T>): T {
   return b.value;
 }
 
 const n = unbox({ value: 42 });
-```
-
-------------
-
-# Algorithm 2
-
- 1. At each parameter position, match occurrences of `T` in the argument types
- 2. Set `T` according to those matches
-
----------------
-
-# Wrapped Type Parameters
-
-```ts{1|3-5|7|8|all}
-type Box<T> = { value: T };
-
-function unbox<T>(b: Box<T>): T {
-  return b.value;
-}
-
-const x = { value: 42 };
-const n = unbox(x);
 ```
 
 <v-clicks>
@@ -147,11 +132,16 @@ const n = unbox(x);
 
 </v-clicks>
 
-<!-- Here, we line up the occurrences of T with the manifest types -->
+------------
+
+# Algorithm
+
+ 1. At each parameter position, match occurrences of `T` in the argument types
+ 2. Set `T` according to those matches
 
 ------------
 
-# Algorithm 2
+# Algorithm
 
 <ol>
 <li>Collect <i>candidates</i></li>
@@ -163,7 +153,7 @@ const n = unbox(x);
 # Multiple Candidates: Round 1
 
 ```ts{1|2-4|6|all}
-type Box<T> = { value: T };
+type Box<T> = { readonly value: T };
 function boxHasValue<T>(box: Box<T>, value: T): boolean {
   return box.value === value;
 }
@@ -175,7 +165,7 @@ const b = boxHasValue({ value: 42 }, "hello");
 
  * `unknown`
  * `string | number`
- * `string` + an error on `"hello"`
+ * `number` + an error on `"hello"`
 
 </v-clicks>
 
@@ -186,7 +176,7 @@ const b = boxHasValue({ value: 42 }, "hello");
 layout: center
 ---
 
-# Generics should *usually* mimic what would happen if you inlined the call
+# Generics should usually mimic what would happen if you inlined the call
 
 <!-- This isn't always correct, but is a good starting point -->
 
@@ -194,7 +184,10 @@ layout: center
 
 # Inlined Call
 
-```ts{1|3-4}
+```ts{1-4|4-7}
+function boxHasValue<T>(box: Box<T>, value: T): boolean {
+  return box.value === value;
+}
 const b = boxHasValue({ value: 42 }, "hello");
 
 // Type error, can't compare string to number
@@ -208,7 +201,7 @@ const b = { value: 42 }.value === "hello"
 # Multiple Candidates
 
 ```ts
-type Box<T> = { value: T };
+type Box<T> = { readonly value: T };
 function boxHasValue<T>(box: Box<T>, value: T): boolean {
   return box.value === value;
 }
@@ -220,7 +213,7 @@ const b = boxHasValue({ value: 42 }, "hello");
 
  * `unknown` ← TypeScript 1.5 behavior
  * `string | number` ← maybe?
- * `string` + an error on `arg2` ← TypeScript 1.6+ behavior
+ * `number` + an error on `"hello"` ← TypeScript 1.6+ behavior
 
 </v-clicks>
 
@@ -229,7 +222,7 @@ const b = boxHasValue({ value: 42 }, "hello");
 # Why Not Union?
 
 ```ts
-type Box<T> = { value: T };
+type Box<T> = { readonly value: T };
 function boxHasValue<T>(box: Box<T>, value: T): boolean {
   return box.value === value;
 }
@@ -250,8 +243,8 @@ layout: center
 
 # Why Not Union?
 
-```ts
-type Box<T> = { value: T };
+```ts{3}
+type Box<T> = { readonly value: T };
 
 function boxHasValue<T, U>(box: Box<T>, value: U): boolean {
   return box.value === value;
@@ -265,8 +258,8 @@ function boxHasValue<T, U>(box: Box<T>, value: U): boolean {
 
 # Why Not Union?
 
-```ts
-type Box<T> = { value: T };
+```ts{3}
+type Box<T> = { readonly value: T };
 
 function boxHasValue(box: Box<unknown>, value: unknown): boolean {
   return box.value === value;
@@ -278,7 +271,7 @@ function boxHasValue(box: Box<unknown>, value: unknown): boolean {
 
 --------------
 
-# Algorithm 3
+# Algorithm
 
 <v-clicks>
 
@@ -290,10 +283,10 @@ function boxHasValue(box: Box<unknown>, value: unknown): boolean {
 
 --------------
 
-# Algorithm 3
+# Algorithm
 
 ```ts
-type Box<T> = { value: T };
+type Box<T> = { readonly value: T };
 function boxHasValue<T>(box: Box<T>, value: T): boolean {
   return box.value === value;
 }
@@ -305,7 +298,7 @@ const b = boxHasValue<number>({ value: 42 }, "hello");
 
 --------------
 
-# Algorithm 3
+# Algorithm
 
  1. Collect candidates
  2. Pick the first candidate <span v-click>← "first"? 🤔</span>
@@ -325,12 +318,14 @@ find("hello", [1, 2, 3, "hello"]);
 
 * Candidate 1: `string`
 * Candidate 2: `string | number`
+* ∴ `T` = `string`
+* ∴ Error on `(string | number)[]`
 
 </v-clicks>
 
 --------------
 
-# Algorithm 4
+# Algorithm
 
  1. Collect candidates
  2. Pick the *best* candidate <span v-click>← "best" ? 🤔</span>
@@ -340,7 +335,7 @@ find("hello", [1, 2, 3, "hello"]);
 
 # Best Common Supertype
 
-From the candidates, choose the type that is a supertype of all other types
+The largest type that contains all the other types
 
 <v-clicks depth="2">
 
@@ -355,7 +350,25 @@ From the candidates, choose the type that is a supertype of all other types
 
 --------------
 
-# Best Common Supertype Failure
+# Multiple Candidates: Round 2
+
+```ts
+function find<T>(needle: T, haystack: readonly T[]): T;
+
+find("hello", [1, 2, 3, "hello"]);
+```
+
+<v-clicks>
+
+* Candidate 1: `string`
+* Candidate 2: `string | number`
+* ∴ `T` = `string | number`
+
+</v-clicks>
+
+---------------
+
+# Multiple Candidates: Round 2
 
 ```ts
 function find<T>(needle: T, haystack: readonly T[]): T;
@@ -363,165 +376,41 @@ function find<T>(needle: T, haystack: readonly T[]): T;
 find("hello", [1, 2, 3]);
 ```
 
-<!-- What to do when there are no failures? Press on -->
+<v-clicks>
+
+* Candidate 1: `string`
+* Candidate 2: `number`
+* ∴ `T` = `string` (arbitrary)
+* ∴ Error on `[1, 2, 3]`
+
+</v-clicks>
 
 --------------
 
-# Algorithm 4
+# Algorithm
 
  1. Collect candidates
- 2. Pick common supertype if it exists <span v-click>← 🤔</span>
+ 2. Pick common supertype <span v-click>← 🤔?</span>
  3. Process the call
 
 --------------
-
-# Contravariant Inference
-
-```ts{1-4|6|8|all}
-function find<T>(
-  arr: readonly T[],
-  func: (arg: T) => boolean
-): T;
-
-function isNeat(sn: string | number): boolean;
-
-const x = find([1, 2, 3], isNeat);
-```
---------------
-
-# Contravariant Inference
-
-```ts
-function find<T>(
-  arr: readonly T[],
-  func: (arg: T) => boolean
-): T;
-
-function isNeat(sn: string | number): boolean;
-
-const x = find([1, 2, 3], isNeat);
-```
-
-<v-clicks>
-<ul>
-<li>Candidate from <code>arr</code>: <code>number</code></li>
-<li>Candidate from <code>isNeat</code>: <code>string | number</code></li>
-<li>Best supertype: <code>string | number</code> 🤔⁉️</li>
-</ul>
-</v-clicks>
-
---------------
-
-
-# Contravariant Inference
-
-```ts{1-5|7|9|all}
-function find<T>(
-  arr1: readonly T[],
-  arr2: readonly T[],
-  func: (arg: T) => boolean
-): T;
-
-function isNeat(snb: string | number | boolean): boolean;
-
-const x = find([1, 2, 3], [1, 2, "a", "b"], isNeat);
-```
-
-<v-clicks>
-
- * `string | number | boolean` (contravariant)
- * `string | number` (covariant)
- * `number` (covariant)
-
-</v-clicks>
-
---------------
-
-# Contravariant Inference
-
-```ts
-function find<T>(
-  arr1: readonly T[],
-  arr2: readonly T[],
-  func: (arg: T) => boolean
-): T;
-
-function isNeat(snb: string | number | boolean): boolean;
-
-const x = find([1, 2, 3], [1, 2, "a", "b"], isNeat);
-```
-
- * `string | number | boolean` <span v-click>← contravariant upper bound</span>
- * `string | number` <span v-click>← highest covariant inference ⭐</span>
- * `number` <span v-click>← lower covariant inference</span>
- 
---------------
-
-# Contravariant Inference
-
-```ts{1-5|7|9|all}
-function find<T>(
-  arr1: readonly T[],
-  arr2: readonly T[],
-  func: (arg: T) => boolean
-): T;
-
-function isNeat(n: number): boolean;
-
-const x = find([1, 2, 3], [1, 2, "a", "b"], isNeat);
-```
-
-<v-clicks>
-
- * `string | number` ← highest covariant inference
- * `number` ← contravariant upper bound ⭐
- * `number` ← lower covariant inference
-
-</v-clicks>
-
--------------
-
-# Contravariant Inference
-
-```ts
-function find<T>(
-  arr1: readonly T[],
-  arr2: readonly T[],
-  func: (arg: T) => boolean
-): T;
-
-function isNeat(n: number): boolean;
-
-const x = find<number>([1, 2, 3], [1, 2, "a", "b"], isNeat);
-// Error                                 ~~~  ~~~
-```
-
---------------
-
-# Algorithm 5
-
- 1. Collect candidates, noting their variance
- 2. Pick the best candidate, bounded in both directions
- 3. Process the call
-
-------------
 
 # Candidate Collection Challenge
 
-```ts{1,3,5,all}
-type Box<T> = { value: T };
+```ts{1|3|5|all}
+type Box<T> = { readonly value: T };
 
-function maybeUnbox<T>(box: T | Box<T>): T;
+function unboxIfBox<T>(box: T | Box<T>): T;
 
-const x = maybeUnbox({ value: 42 });
+const x = unboxIfBox({ value: 42 });
 ```
 
 <v-clicks>
 
- * Candidate: `{ value: number }`
+ * Candidate: `Box<number>`
  * Candidate: `number`
- * `x`: `number | { value: number }`
- * 🤔⁉️
+ * ∴ `x`: `Box<number>`
+ * `Box<number>` 🤔⁉️
 
 </v-clicks>
 
@@ -533,7 +422,7 @@ layout: center
 
 --------------
 
-# Algorithm 6
+# Algorithm
 
  1. Collect candidates, noting their variance **and priority**
  2. Pick the best candidate, **preferring higher-priority inferences**
@@ -546,20 +435,116 @@ layout: center
 ```ts
 type Box<T> = { value: T };
 
-function maybeUnbox<T>(box: T | Box<T>): T;
+function unboxIfBox<T>(box: T | Box<T>): T;
 
-const x = maybeUnbox({ value: 42 });
+const x = unboxIfBox({ value: 42 });
 ```
 
 <v-clicks>
 
- * Candidate: `{ value: number }` (lower-priority)
+ * Candidate: `Box<number>` (lower-priority)
  * Candidate: `number` (higher-priority)
- * `x`: `number`
+ * ∴ `x`: `number`
+ * 🥰
 
 </v-clicks>
 
-----------
+--------------
+
+# Nonsense Inference
+
+```ts{1-4|5|7|all}
+function find<T>(
+  arr: readonly T[],
+  func: (arg: T) => boolean
+): T;
+function isNeat(sn: string | number): boolean;
+
+const x = find([1, 2, 3], isNeat);
+```
+
+<v-clicks>
+<ul>
+<li>Candidate from <code>arr</code>: <code>number</code></li>
+<li>Candidate from <code>isNeat</code>: <code>string | number</code></li>
+<li>∴ Best supertype: <code>string | number</code></li>
+<li><code>string</code> 🤔⁉️</li>
+</ul>
+</v-clicks>
+
+--------------
+
+# Nonsense Inference
+
+```ts{1-5|6|8|all}
+function find<T>(
+  arr1: readonly T[],
+  arr2: readonly T[],
+  func: (arg: T) => boolean
+): T;
+function isNeat(snb: string | number | boolean): boolean;
+
+const x = find([1, 2, "a", "b"], [1, 2, 3], isNeat);
+```
+
+--------------
+
+# Variance-based Bounds
+
+```ts
+function find<T>(arr1: T[], arr2: T[], func: (arg: T) => boolean): T;
+function isNeat(snb: string | number | boolean): boolean;
+const x = find([1, 2, "a", "b"], [1, 2, 3], isNeat);
+```
+
+| | | | | |
+|--|--|--|--|--|
+|<span v-click="1">`arg`</span>|<span v-click="2">`string \| number \| boolean`</span>|<span v-click="3">input</span>|<span v-click="10">upper bound</span>|
+|<span v-click="4">`arr1`</span>|<span v-click="5">`string \| number`</span>|<span v-click="6">output</span>|<span v-click="11">best output</span><span v-click="13">⭐</span>|
+|<span v-click="7">`arr2`</span>|<span v-click="8">`number`</span>|<span v-click="9">output</span>|<span v-click="12">other output</span>|
+
+--------------
+
+# Variance-based Bounds
+
+```ts{3|all}
+function find<T>(arr1: T[], arr2: T[], func: (arg: T) => boolean): T;
+
+function isNeat(n: number): boolean;
+
+const x = find([1, 2, 3], [1, 2, "a", "b"], isNeat);
+```
+
+<v-clicks>
+
+ * `string | number` ← best output
+ * `number` ← upper bound from input ⭐
+ * `number` ← lower output
+
+</v-clicks>
+
+-------------
+
+# Variance-based Bounds
+
+```ts
+function find<T>(arr1: T[], arr2: T[], func: (arg: T) => boolean): T;
+
+function isNeat(n: number): boolean;
+
+const x = find([1, 2, 3], [1, 2, "a", "b"], isNeat);
+//                               ~~~  ~~~
+```
+
+--------------
+
+# Algorithm
+
+ 1. Collect candidates, noting their variance
+ 2. Pick the best candidate, bounded in both directions
+ 3. Process the call
+
+------------
 
 # Context-Sensitive Expressions
 
@@ -585,7 +570,7 @@ const n = exec(
 
 --------------
 
-# Algorithm 7
+# Algorithm
 
 <v-clicks depth="2">
 
@@ -598,10 +583,10 @@ const n = exec(
 
 --------------
 
-# Algorithm 7
+# Algorithm
 
 ```ts
-declare function exec<T, U>(
+function exec<T, U>(
     consumer: (arg: T) => U,
     producer: () => T
 ): U;
@@ -611,3 +596,18 @@ const n = exec<string, number>(
     () => "hello"
 );
 ```
+
+<v-clicks>
+
+ * `T`: `string`
+ * `U`: `number`
+ * 🥰
+
+</v-clicks>
+
+--------------
+
+# Summary
+
+ * Inference is not that scary!
+ * Work from motivating examples
